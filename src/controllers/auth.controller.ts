@@ -1,10 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { AuthService } from "@/services/auth.service";
+import { UserService } from "@/services/user.service";
 import { config } from "@/config/index";
 import { AuthenticatedRequest } from "@/types/index";
 
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private userService: UserService,
+  ) {}
 
   login = async (
     req: Request,
@@ -94,6 +98,22 @@ export class AuthController {
       });
 
       res.status(200).json({ message: "Sesión cerrada correctamente" });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  register = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const user = await this.userService.create({
+        ...req.body,
+        rol: "Estudiante",
+      });
+      res.status(201).json(user);
     } catch (error) {
       next(error);
     }

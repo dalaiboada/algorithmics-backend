@@ -9,4 +9,12 @@ export class UserRepository {
   async findByEmailWithPassword(email: string): Promise<IUser | null> {
     return await UserModel.findOne({ email }).select("+clave").lean();
   }
+
+  async findByEmail(email: string): Promise<IUser | null> {
+    return await UserModel.findOne({ email }).lean();
+  }
+
+  async create(userData: Partial<IUser>) {
+    return await UserModel.create(userData);
+  }
 }

@@ -27,3 +27,17 @@ export const authenticate = (
     throw new UnauthorizedError("Token inválido o expirado");
   }
 };
+
+// Verifica que el rol del usuario esté entre los permitidos
+export const authorize = (...roles: string[]) => {
+  return (
+    req: AuthenticatedRequest,
+    _res: Response,
+    next: NextFunction,
+  ): void => {
+    if (!req.user || !roles.includes(req.user.rol)) {
+      throw new ForbiddenError("No tienes permiso para acceder a este recurso");
+    }
+    next();
+  };
+};

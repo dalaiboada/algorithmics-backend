@@ -22,7 +22,7 @@ export class CreateUserDto {
   clave!: string;
 
   @IsOptional()
-  @IsEnum(["Administrador", "Usuario"])
+  @IsEnum(["Administrador", "Instructor", "Estudiante"])
   rol?: string;
 
   @IsOptional()
