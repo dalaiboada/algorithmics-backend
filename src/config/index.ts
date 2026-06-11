@@ -25,4 +25,7 @@ export const config = {
   refreshCookieMaxAge: ms(
     (process.env.REFRESH_TOKEN_EXPIRES_IN || "7d") as ms.StringValue,
   ),
+
+  gmailUser: process.env.GMAIL_USER || "",
+  gmailAppPassword: process.env.GMAIL_APP_PASSWORD || "",
 };

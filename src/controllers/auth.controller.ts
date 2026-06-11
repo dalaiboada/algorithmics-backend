@@ -1,14 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { AuthService } from "@/services/auth.service";
-import { UserService } from "@/services/user.service";
 import { config } from "@/config/index";
 import { AuthenticatedRequest } from "@/types/index";
 
 export class AuthController {
-  constructor(
-    private authService: AuthService,
-    private userService: UserService,
-  ) {}
+  constructor(private authService: AuthService) {}
 
   login = async (
     req: Request,
@@ -109,10 +105,8 @@ export class AuthController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const user = await this.userService.create({
-        ...req.body,
-        rol: "Estudiante",
-      });
+      const user = await this.authService.register(req.body);
+
       res.status(201).json(user);
     } catch (error) {
       next(error);
@@ -140,7 +134,9 @@ export class AuthController {
         path: "/api/v1/auth",
       });
 
-      res.status(200).json({ message: "Sesión cerrada en todos los dispositivos" });
+      res
+        .status(200)
+        .json({ message: "Sesión cerrada en todos los dispositivos" });
     } catch (error) {
       next(error);
     }

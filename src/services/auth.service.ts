@@ -5,13 +5,44 @@ import { config } from "@/config/index";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { IUser } from "@/interfaces/user.interface";
-import { UnauthorizedError } from "@/errors/http.errors";
+import { BadRequestError, UnauthorizedError } from "@/errors/http.errors";
 import { RefreshTokenModel } from "@/models/refresh-token.model";
+import { EmailService } from "@/services/email.service";
 
 type DBUserPayload = IUser & { clave?: string; __v?: number };
 
 export class AuthService {
-  constructor(private userRepository: UserRepository) {}
+  constructor(
+    private userRepository: UserRepository,
+    private emailService: EmailService,
+  ) {}
+
+  async register(data: {
+    nombre: string;
+    apellido: string;
+    email: string;
+    clave: string;
+  }) {
+    const { email, clave } = data;
+
+    const existingUser = await this.userRepository.findByEmail(email);
+    if (existingUser) {
+      throw new BadRequestError("El correo electrónico ya está registrado");
+    }
+
+    const hashedPassword = await bcrypt.hash(clave, config.saltRounds);
+
+    const user = await this.userRepository.create({
+      ...data,
+      clave: hashedPassword,
+      rol: "Estudiante",
+      habilitado: false,
+    });
+
+    await this.emailService.sendWelcomeEmail(email, data.nombre);
+
+    return user;
+  }
 
   async login(email: string, clave: string): Promise<AuthResponse> {
     const user = await this.userRepository.findByEmailWithPassword(email);
