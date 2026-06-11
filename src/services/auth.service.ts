@@ -5,7 +5,7 @@ import { config } from "@/config/index";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { IUser } from "@/interfaces/user.interface";
-import { BadRequestError, UnauthorizedError } from "@/errors/http.errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@/errors/http.errors";
 import { RefreshTokenModel } from "@/models/refresh-token.model";
 import { EmailService } from "@/services/email.service";
 
@@ -146,6 +146,46 @@ export class AuthService {
     await RefreshTokenModel.updateMany(
       { user: userId, revoked: false },
       { $set: { revoked: true } },
+    );
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.userRepository.findByEmail(email);
+
+    if (!user) {
+      return;
+    }
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = this.hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 3600000);
+
+    await this.userRepository.setResetToken(
+      user._id!.toString(),
+      tokenHash,
+      expiresAt,
+    );
+
+    const resetLink = `${config.frontendUrl}/reset-password?token=${rawToken}`;
+    await this.emailService.sendResetPasswordEmail(
+      email,
+      user.nombre,
+      resetLink,
+    );
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const tokenHash = this.hashToken(token);
+    const user = await this.userRepository.findByResetToken(tokenHash);
+
+    if (!user) {
+      throw new BadRequestError("Token inválido o expirado");
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, config.saltRounds);
+    await this.userRepository.updatePassword(
+      user._id!.toString(),
+      hashedPassword,
     );
   }
 

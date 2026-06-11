@@ -26,6 +26,8 @@ const UserSchema = new Schema<IUser>(
       default: "Estudiante",
     },
     twoFactorEnabled: { type: Boolean, default: false },
+    resetPasswordToken: { type: String, default: undefined },
+    resetPasswordExpires: { type: Date, default: undefined },
   },
   {
     timestamps: true,

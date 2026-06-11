@@ -9,6 +9,8 @@ export interface IUser {
   habilitado: boolean;
   rol: string;
   twoFactorEnabled: boolean;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }

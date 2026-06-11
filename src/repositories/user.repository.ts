@@ -17,4 +17,34 @@ export class UserRepository {
   async create(userData: Partial<IUser>) {
     return await UserModel.create(userData);
   }
+
+  async setResetToken(
+    userId: string,
+    tokenHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await UserModel.findByIdAndUpdate(userId, {
+      $set: {
+        resetPasswordToken: tokenHash,
+        resetPasswordExpires: expiresAt,
+      },
+    });
+  }
+
+  async findByResetToken(tokenHash: string): Promise<IUser | null> {
+    return await UserModel.findOne({
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: { $gt: new Date() },
+    }).lean();
+  }
+
+  async updatePassword(
+    userId: string,
+    hashedPassword: string,
+  ): Promise<void> {
+    await UserModel.findByIdAndUpdate(userId, {
+      $set: { clave: hashedPassword },
+      $unset: { resetPasswordToken: "", resetPasswordExpires: "" },
+    });
+  }
 }

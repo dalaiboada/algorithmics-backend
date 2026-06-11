@@ -7,6 +7,8 @@ import { validationMiddleware } from "@/middlewares/validation.middleware";
 import { authenticate } from "@/middlewares/auth.middleware";
 import { LoginDto } from "@/dtos/login.dto";
 import { CreateUserDto } from "@/dtos/create-user.dto";
+import { ForgotPasswordDto } from "@/dtos/forgot-password.dto";
+import { ResetPasswordDto } from "@/dtos/reset-password.dto";
 
 const router = Router();
 
@@ -19,6 +21,16 @@ router.post("/register", validationMiddleware(CreateUserDto), authController.reg
 router.post("/login", validationMiddleware(LoginDto), authController.login);
 router.post("/logout", authController.logout);
 router.post("/refresh", authController.refresh);
+router.post(
+  "/forgot-password",
+  validationMiddleware(ForgotPasswordDto),
+  authController.forgotPassword,
+);
+router.post(
+  "/reset-password",
+  validationMiddleware(ResetPasswordDto),
+  authController.resetPassword,
+);
 router.post("/logout-all", authenticate, authController.logoutAll);
 
 export default router;

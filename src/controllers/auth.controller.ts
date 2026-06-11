@@ -113,6 +113,43 @@ export class AuthController {
     }
   };
 
+  forgotPassword = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { email } = req.body;
+      await this.authService.forgotPassword(email);
+
+      res
+        .status(200)
+        .json({
+          message:
+            "Si el correo está registrado, recibirás un enlace de recuperación",
+        });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  resetPassword = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { token, clave } = req.body;
+      await this.authService.resetPassword(token, clave);
+
+      res
+        .status(200)
+        .json({ message: "Contraseña actualizada correctamente" });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   logoutAll = async (
     req: AuthenticatedRequest,
     res: Response,
