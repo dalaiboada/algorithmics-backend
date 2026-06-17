@@ -3,10 +3,13 @@
   "version": "1.0.0",
   "description": "Algorithmics API RESTful",
   "private": true,
+  "_moduleAliases": {
+    "@": "dist"
+  },
   "scripts": {
     "dev": "nodemon --watch src --ext ts,json --exec \"ts-node -r tsconfig-paths/register src/server.ts\"",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node -r module-alias/register dist/server.js",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
@@ -42,8 +45,5 @@
     "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.0"
-  },
-  "_moduleAliases": {
-    "@": "dist"
   }
 }

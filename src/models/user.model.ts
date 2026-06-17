@@ -10,7 +10,7 @@ const clearSensitiveFields = (doc: any, ret: any) => {
 const UserSchema = new Schema<IUser>(
   {
     nombre: { type: String, required: true, trim: true },
-    apellido: { type: String, required: true, trim: true },
+    apellido: { type: String, default: "", trim: true },
     email: {
       type: String,
       required: true,
@@ -18,8 +18,14 @@ const UserSchema = new Schema<IUser>(
       lowercase: true,
       trim: true,
     },
-    clave: { type: String, required: true, select: false },
+    clave: { type: String, select: false },
     habilitado: { type: Boolean, default: true },
+    provider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
+    googleId: { type: String, default: undefined },
     rol: {
       type: String,
       enum: ["Administrador", "Instructor", "Estudiante"],

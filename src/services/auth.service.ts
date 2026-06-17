@@ -7,15 +7,88 @@ import jwt from "jsonwebtoken";
 import { IUser } from "@/interfaces/user.interface";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@/errors/http.errors";
 import { RefreshTokenModel } from "@/models/refresh-token.model";
+import { UserModel } from "@/models/user.model";
 import { EmailService } from "@/services/email.service";
+import { OAuth2Client } from "google-auth-library";
 
 type DBUserPayload = IUser & { clave?: string; __v?: number };
 
 export class AuthService {
+  private googleClient: OAuth2Client;
+
   constructor(
     private userRepository: UserRepository,
     private emailService: EmailService,
-  ) {}
+  ) {
+    this.googleClient = new OAuth2Client(config.googleClientId);
+  }
+
+  async googleLogin(idToken: string): Promise<AuthResponse> {
+    if (!config.googleClientId) {
+      throw new BadRequestError("Google OAuth no está configurado");
+    }
+
+    const ticket = await this.googleClient.verifyIdToken({
+      idToken,
+      audience: config.googleClientId,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      throw new UnauthorizedError("Token de Google inválido");
+    }
+
+    const { email, given_name, family_name, sub } = payload;
+    const nombre = given_name || "Usuario";
+    const apellido = family_name || "";
+    const googleId = sub!;
+
+    let user = await this.userRepository.findByGoogleId(googleId);
+
+    if (!user) {
+      const existing = await this.userRepository.findByEmail(email);
+      if (existing) {
+        user = await this.linkGoogleToUser(existing._id!.toString(), googleId);
+      } else {
+        user = await this.userRepository.create({
+          nombre,
+          apellido,
+          email,
+          provider: "google",
+          googleId,
+          habilitado: false,
+          rol: "Estudiante",
+        });
+      }
+    }
+
+    const token = jwt.sign(
+      { id: user._id?.toString(), rol: user.rol },
+      config.jwtSecret as string,
+      { expiresIn: config.jwtExpiration },
+    );
+
+    const refreshToken = await this.generateRefreshToken(user._id?.toString()!);
+
+    const plainUser = (user as any).toObject ? (user as any).toObject() : user;
+    const { clave: _c, __v: _v, ...userWithoutPassword } = plainUser as DBUserPayload;
+
+    return {
+      user: userWithoutPassword as IUser,
+      token,
+      refreshToken,
+    };
+  }
+
+  private async linkGoogleToUser(userId: string, googleId: string): Promise<IUser> {
+    const updated = await UserModel.findByIdAndUpdate(
+      userId,
+      { $set: { googleId, provider: "google" } },
+      { new: true },
+    ).lean();
+    if (!updated) throw new NotFoundError("Usuario no encontrado");
+    return updated as unknown as IUser;
+  }
 
   async register(data: {
     nombre: string;
@@ -49,6 +122,10 @@ export class AuthService {
 
     if (!user) {
       throw new UnauthorizedError("Credenciales inválidas");
+    }
+
+    if (!user.clave) {
+      throw new UnauthorizedError("Esta cuenta usa Google. Inicia sesión con Google.");
     }
 
     const isMatch = await bcrypt.compare(clave, user.clave);

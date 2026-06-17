@@ -150,6 +150,41 @@ export class AuthController {
     }
   };
 
+  googleLogin = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { idToken } = req.body;
+      if (!idToken) {
+        res.status(400).json({ message: "idToken es requerido" });
+        return;
+      }
+
+      const { user, token, refreshToken } = await this.authService.googleLogin(idToken);
+
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: config.nodeEnv === "production",
+        sameSite: "strict",
+        maxAge: config.cookieMaxAge,
+      });
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: config.nodeEnv === "production",
+        sameSite: "strict",
+        path: "/api/v1/auth",
+        maxAge: config.refreshCookieMaxAge,
+      });
+
+      res.status(200).json(user);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   logoutAll = async (
     req: AuthenticatedRequest,
     res: Response,

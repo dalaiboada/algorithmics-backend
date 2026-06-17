@@ -5,9 +5,11 @@ export interface IUser {
   nombre: string;
   apellido: string;
   email: string;
-  clave: string;
+  clave?: string;
   habilitado: boolean;
   rol: string;
+  provider: "local" | "google";
+  googleId?: string;
   twoFactorEnabled: boolean;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;

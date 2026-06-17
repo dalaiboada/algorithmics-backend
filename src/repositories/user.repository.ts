@@ -18,6 +18,10 @@ export class UserRepository {
     return await UserModel.create(userData);
   }
 
+  async findByGoogleId(googleId: string): Promise<IUser | null> {
+    return await UserModel.findOne({ googleId }).lean();
+  }
+
   async setResetToken(
     userId: string,
     tokenHash: string,

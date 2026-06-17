@@ -31,6 +31,7 @@ router.post(
   validationMiddleware(ResetPasswordDto),
   authController.resetPassword,
 );
+router.post("/google", authController.googleLogin);
 router.post("/logout-all", authenticate, authController.logoutAll);
 
 export default router;
