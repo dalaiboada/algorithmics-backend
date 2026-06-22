@@ -4,7 +4,7 @@ import { UserService } from "@/services/user.service";
 import { UserRepository } from "@/repositories/user.repository";
 import { CreateUserDto } from "@/dtos/create-user.dto";
 import { validationMiddleware } from "@/middlewares/validation.middleware";
-import { authenticate, authorize } from "@/middlewares/auth.middleware";
+import { authenticate, permit } from "@/middlewares/auth.middleware";
 
 const router = Router();
 
@@ -15,7 +15,7 @@ const userController = new UserController(userService);
 router.post(
   "/",
   authenticate,
-  authorize("Administrador"),
+  permit("user:create"),
   validationMiddleware(CreateUserDto),
   userController.create,
 );
