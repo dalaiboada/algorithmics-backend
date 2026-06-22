@@ -1,9 +1,11 @@
 import crypto from "crypto";
 import { UserRepository } from "@/repositories/user.repository";
-import { AuthResponse, RefreshResponse } from "@/interfaces/auth.interface";
+import { AuthResponse, LoginResponse, RefreshResponse } from "@/interfaces/auth.interface";
 import { config } from "@/config/index";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import speakeasy from "speakeasy";
+import QRCode from "qrcode";
 import { IUser } from "@/interfaces/user.interface";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@/errors/http.errors";
 import { RefreshTokenModel } from "@/models/refresh-token.model";
@@ -117,7 +119,7 @@ export class AuthService {
     return user;
   }
 
-  async login(email: string, clave: string): Promise<AuthResponse> {
+  async login(email: string, clave: string): Promise<LoginResponse> {
     const user = await this.userRepository.findByEmailWithPassword(email);
 
     if (!user) {
@@ -131,6 +133,13 @@ export class AuthService {
     const isMatch = await bcrypt.compare(clave, user.clave);
     if (!isMatch) {
       throw new UnauthorizedError("Credenciales inválidas");
+    }
+
+    if (user.twoFactorEnabled) {
+      return {
+        require2FA: true,
+        userId: user._id?.toString(),
+      };
     }
 
     const token = jwt.sign(
@@ -151,6 +160,107 @@ export class AuthService {
     return {
       user: userWithoutPassword as IUser,
       token,
+      refreshToken,
+    };
+  }
+
+  async setup2FA(userId: string): Promise<{ secret: string; qrCode: string }> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new NotFoundError("Usuario no encontrado");
+    }
+
+    if (user.twoFactorEnabled) {
+      throw new BadRequestError("2FA ya está activado");
+    }
+
+    const secret = speakeasy.generateSecret({
+      name: `Algorithmics:${user.email}`,
+    });
+
+    await this.userRepository.setTwoFactorSecret(userId, secret.base32);
+
+    const qrCode = await QRCode.toDataURL(secret.otpauth_url!);
+
+    return {
+      secret: secret.base32,
+      qrCode,
+    };
+  }
+
+  async verifySetup2FA(userId: string, token: string): Promise<void> {
+    const user = await this.userRepository.findByIdWithSecret(userId);
+    if (!user) {
+      throw new NotFoundError("Usuario no encontrado");
+    }
+
+    if (user.twoFactorEnabled) {
+      throw new BadRequestError("2FA ya está activado");
+    }
+
+    if (!user.twoFactorSecret) {
+      throw new BadRequestError("Primero debes configurar 2FA");
+    }
+
+    const verified = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: "base32",
+      token,
+      window: 1,
+    });
+
+    if (!verified) {
+      throw new UnauthorizedError("Código inválido");
+    }
+
+    await UserModel.findByIdAndUpdate(userId, {
+      $set: { twoFactorEnabled: true },
+    });
+  }
+
+  async login2FA(userId: string, token: string): Promise<AuthResponse> {
+    const user = await this.userRepository.findByIdWithSecret(userId);
+    if (!user) {
+      throw new UnauthorizedError("Credenciales inválidas");
+    }
+
+    if (!user.twoFactorEnabled) {
+      throw new BadRequestError("2FA no está activado para esta cuenta");
+    }
+
+    if (!user.twoFactorSecret) {
+      throw new BadRequestError("2FA no está configurado correctamente");
+    }
+
+    const verified = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: "base32",
+      token,
+      window: 1,
+    });
+
+    if (!verified) {
+      throw new UnauthorizedError("Código incorrecto");
+    }
+
+    const jwtToken = jwt.sign(
+      {
+        id: user._id?.toString(),
+        rol: user.rol,
+      },
+      config.jwtSecret as string,
+      {
+        expiresIn: config.jwtExpiration,
+      },
+    );
+
+    const refreshToken = await this.generateRefreshToken(user._id?.toString()!);
+
+    const { clave: _, twoFactorSecret: __, __v: _v, ...userWithoutSensitive } = user as DBUserPayload & { twoFactorSecret?: string };
+
+    return {
+      user: userWithoutSensitive as IUser,
+      token: jwtToken,
       refreshToken,
     };
   }

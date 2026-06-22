@@ -11,6 +11,7 @@ export interface IUser {
   provider: "local" | "google";
   googleId?: string;
   twoFactorEnabled: boolean;
+  twoFactorSecret?: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   createdAt?: Date;

@@ -9,6 +9,8 @@ import { LoginDto } from "@/dtos/login.dto";
 import { CreateUserDto } from "@/dtos/create-user.dto";
 import { ForgotPasswordDto } from "@/dtos/forgot-password.dto";
 import { ResetPasswordDto } from "@/dtos/reset-password.dto";
+import { VerifySetup2faDto } from "@/dtos/verify-setup-2fa.dto";
+import { Login2faDto } from "@/dtos/login-2fa.dto";
 
 const router = Router();
 
@@ -32,6 +34,9 @@ router.post(
   authController.resetPassword,
 );
 router.post("/google", authController.googleLogin);
+router.post("/2fa/setup", authenticate, authController.setup2FA);
+router.post("/2fa/verify-setup", authenticate, validationMiddleware(VerifySetup2faDto), authController.verifySetup2FA);
+router.post("/login/2fa", validationMiddleware(Login2faDto), authController.login2FA);
 router.post("/logout-all", authenticate, authController.logoutAll);
 
 export default router;

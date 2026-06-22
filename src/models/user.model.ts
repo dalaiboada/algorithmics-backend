@@ -4,6 +4,7 @@ import { IUser } from "@/interfaces/user.interface";
 const clearSensitiveFields = (doc: any, ret: any) => {
   delete ret.__v;
   delete ret.clave;
+  delete ret.twoFactorSecret;
   return ret;
 };
 
@@ -32,6 +33,7 @@ const UserSchema = new Schema<IUser>(
       default: "Estudiante",
     },
     twoFactorEnabled: { type: Boolean, default: false },
+    twoFactorSecret: { type: String, default: undefined },
     resetPasswordToken: { type: String, default: undefined },
     resetPasswordExpires: { type: Date, default: undefined },
   },

@@ -42,6 +42,16 @@ export class UserRepository {
     }).lean();
   }
 
+  async findByIdWithSecret(id: string): Promise<IUser | null> {
+    return await UserModel.findById(id).select("+clave +twoFactorSecret").lean();
+  }
+
+  async setTwoFactorSecret(userId: string, secret: string): Promise<void> {
+    await UserModel.findByIdAndUpdate(userId, {
+      $set: { twoFactorSecret: secret },
+    });
+  }
+
   async updatePassword(
     userId: string,
     hashedPassword: string,

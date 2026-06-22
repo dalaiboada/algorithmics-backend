@@ -13,19 +13,21 @@ export class AuthController {
   ): Promise<void> => {
     try {
       const { email, clave } = req.body;
-      const { user, token, refreshToken } = await this.authService.login(
-        email,
-        clave,
-      );
+      const result = await this.authService.login(email, clave);
 
-      res.cookie("token", token, {
+      if (result.require2FA) {
+        res.status(200).json({ require2FA: true, userId: result.userId });
+        return;
+      }
+
+      res.cookie("token", result.token, {
         httpOnly: true,
         secure: config.nodeEnv === "production",
         sameSite: "strict",
         maxAge: config.cookieMaxAge,
       });
 
-      res.cookie("refreshToken", refreshToken, {
+      res.cookie("refreshToken", result.refreshToken, {
         httpOnly: true,
         secure: config.nodeEnv === "production",
         sameSite: "strict",
@@ -33,7 +35,7 @@ export class AuthController {
         maxAge: config.refreshCookieMaxAge,
       });
 
-      res.status(200).json(user);
+      res.status(200).json(result.user);
     } catch (error) {
       next(error);
     }
@@ -165,6 +167,63 @@ export class AuthController {
       const { user, token, refreshToken } = await this.authService.googleLogin(idToken);
 
       res.cookie("token", token, {
+        httpOnly: true,
+        secure: config.nodeEnv === "production",
+        sameSite: "strict",
+        maxAge: config.cookieMaxAge,
+      });
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: config.nodeEnv === "production",
+        sameSite: "strict",
+        path: "/api/v1/auth",
+        maxAge: config.refreshCookieMaxAge,
+      });
+
+      res.status(200).json(user);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  setup2FA = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { secret, qrCode } = await this.authService.setup2FA(req.user!.id);
+      res.status(200).json({ secret, qrCode });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  verifySetup2FA = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { token } = req.body;
+      await this.authService.verifySetup2FA(req.user!.id, token);
+      res.status(200).json({ message: "2FA activado correctamente" });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  login2FA = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const { userId, token } = req.body;
+      const { user, token: jwtToken, refreshToken } = await this.authService.login2FA(userId, token);
+
+      res.cookie("token", jwtToken, {
         httpOnly: true,
         secure: config.nodeEnv === "production",
         sameSite: "strict",
